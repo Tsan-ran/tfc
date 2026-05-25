@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角函數計算機 (精確分數版)</title>
+    <style>
+        /* Apple 風格設計 */
+        :root {
+            --bg-color: #F5F5F7;
+            --card-bg: #FFFFFF;
+            --text-main: #1D1D1F;
+            --text-sec: #86868B;
+            --blue: #0071E3;
+            --red: #FF3B30;
+            --green: #34C759;
+            --gray-light: #E5E5EA;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 24px 0;
+            text-align: center;
+            letter-spacing: -0.5px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        input[type="number"] {
+            flex: 1;
+            padding: 14px 16px;
+            border: 1px solid var(--gray-light);
+            border-radius: 14px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.2s ease;
+            background-color: #FAFAFA;
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
+            background-color: #FFF;
+        }
+
+        button {
+            background-color: var(--blue);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            padding: 0 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        button:active {
+            transform: scale(0.96);
+        }
+
+        .results {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .result-box {
+            background-color: var(--bg-color);
+            padding: 16px 8px;
+            border-radius: 16px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 70px;
+        }
+
+        .result-box h3 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            color: var(--text-sec);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .exact {
+            margin: 0 0 4px 0;
+            font-size: 18px;
+            font-weight: 600;
+            word-break: break-all;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        }
+
+        .decimal {
+            margin: 0;
+            font-size: 12px;
+            color: var(--text-sec);
+        }
+
+        .sin-text { color: var(--red); }
+        .cos-text { color: var(--green); }
+        
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            border-radius: 16px;
+            background-color: var(--bg-color);
+            padding: 20px;
+        }
+
+        canvas {
+            background-color: transparent;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>三角函數計算機</h1>
+        
+        <div class="input-group">
+            <input type="number" id="angle" placeholder="輸入角度 (例如: 45, 60, 390)" value="60">
+            <button onclick="calculateAndDraw()">計算</button>
+        </div>
+
+        <div class="results">
+            <div class="result-box">
+                <h3 class="sin-text">Sin</h3>
+                <p id="sin-exact" class="exact sin-text">-</p>
+                <p id="sin-val" class="decimal">-</p>
+            </div>
+            <div class="result-box">
+                <h3 class="cos-text">Cos</h3>
+                <p id="cos-exact" class="exact cos-text">-</p>
+                <p id="cos-val" class="decimal">-</p>
+            </div>
+            <div class="result-box">
+                <h3>Tan</h3>
+                <p id="tan-exact" class="exact">-</p>
+                <p id="tan-val" class="decimal">-</p>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas" width="300" height="300"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 處理特殊角度的分數轉換表
+        function getExactValues(deg) {
+            // 正規化角度到 0-359 之間 (處理廣義角及負角)
+            let d = ((deg % 360) + 360) % 360;
+            
+            const exactMap = {
+                0:   { sin: "0",     cos: "1",      tan: "0" },
+                30:  { sin: "1/2",   cos: "√3/2",   tan: "√3/3" },
+                45:  { sin: "√2/2",  cos: "√2/2",   tan: "1" },
+                60:  { sin: "√3/2",  cos: "1/2",    tan: "√3" },
+                90:  { sin: "1",     cos: "0",      tan: "無定義" },
+                120: { sin: "√3/2",  cos: "-1/2",   tan: "-√3" },
+                135: { sin: "√2/2",  cos: "-√2/2",  tan: "-1" },
+                150: { sin: "1/2",   cos: "-√3/2",  tan: "-√3/3" },
+                180: { sin: "0",     cos: "-1",     tan: "0" },
+                210: { sin: "-1/2",  cos: "-√3/2",  tan: "√3/3" },
+                225: { sin: "-√2/2", cos: "-√2/2",  tan: "1" },
+                240: { sin: "-√3/2", cos: "-1/2",   tan: "√3" },
+                270: { sin: "-1",    cos: "0",      tan: "無定義" },
+                300: { sin: "-√3/2", cos: "1/2",    tan: "-√3" },
+                315: { sin: "-√2/2", cos: "√2/2",   tan: "-1" },
+                330: { sin: "-1/2",  cos: "√3/2",   tan: "-√3/3" }
+            };
+
+            return exactMap[d] || { sin: "-", cos: "-", tan: "-" };
+        }
+
+        // 更新 UI 顯示邏輯
+        function updateDisplay(type, exactStr, decimalStr, isUndefined) {
+            const exactEl = document.getElementById(`${type}-exact`);
+            const decEl = document.getElementById(`${type}-val`);
+            
+            if (isUndefined) {
+                exactEl.innerText = "無定義";
+                decEl.innerText = "";
+                return;
+            }
+
+            if (exactStr !== "-") {
+                // 如果是特殊角，上方顯示分數，下方顯示小數
+                exactEl.innerText = exactStr;
+                // 如果已經是整數 (0, 1, -1)，下方就留空保持畫面簡潔
+                if (exactStr === "0" || exactStr === "1" || exactStr === "-1") {
+                    decEl.innerText = "";
+                } else {
+                    decEl.innerText = `≈ ${decimalStr}`;
+                }
+            } else {
+                // 如果不是特殊角，上方直接顯示小數，下方提示
+                exactEl.innerText = decimalStr;
+                decEl.innerText = "非特殊角";
+            }
+        }
+
+        // 解決 JavaScript 浮點數精度問題
+        function cleanZero(val) {
+            return Math.abs(val) < 1e-10 ? 0 : val;
+        }
+
+        function calculateAndDraw() {
+            const inputElement = document.getElementById('angle');
+            const angleDeg = parseFloat(inputElement.value);
+
+            if (isNaN(angleDeg)) {
+                alert("請輸入有效的數字角度！");
+                return;
+            }
+
+            const angleRad = angleDeg * (Math.PI / 180);
+
+            // 計算數值
+            let sinVal = cleanZero(Math.sin(angleRad));
+            let cosVal = cleanZero(Math.cos(angleRad));
+            let tanVal = cleanZero(Math.tan(angleRad));
+
+            // 取得精確分數表
+            const exactValues = getExactValues(angleDeg);
+
+            // 更新 Sin, Cos
+            updateDisplay('sin', exactValues.sin, sinVal.toFixed(4), false);
+            updateDisplay('cos', exactValues.cos, cosVal.toFixed(4), false);
+
+            // 處理 Tan (包含 90, 270 無定義的情況)
+            let isTanUndefined = Math.abs(cosVal) === 0 || Math.abs(tanVal) > 10000;
+            updateDisplay('tan', exactValues.tan, tanVal.toFixed(4), isTanUndefined);
+
+            // 畫圖
+            drawGraph(angleDeg, angleRad, sinVal, cosVal);
+        }
+
+        function drawGraph(deg, rad, sin, cos) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = 100; 
+
+            // 清空畫布
+            ctx.clearRect(0, 0, width, height);
+
+            // 繪製座標軸
+            ctx.beginPath();
+            ctx.strokeStyle = '#C7C7CC';
+            ctx.lineWidth = 1;
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.stroke();
+
+            // 繪製單位圓
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#E5E5EA';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 計算終邊座標
+            const targetX = centerX + cos * radius;
+            const targetY = centerY - sin * radius;
+
+            // 畫出角度弧線
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 20, 0, -rad, rad > 0); 
+            ctx.strokeStyle = '#0071E3';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 繪製 Cos 線段 (綠色)
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(targetX, centerY);
+            ctx.strokeStyle = '#34C759';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 繪製 Sin 線段 (紅色)
+            ctx.beginPath();
+            ctx.moveTo(targetX, centerY);
+            ctx.lineTo(targetX, targetY);
+            ctx.strokeStyle = '#FF3B30';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 繪製斜邊 (藍色)
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(targetX, targetY);
+            ctx.strokeStyle = '#0071E3';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 繪製交點
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, 4, 0, 2 * Math.PI);
+            ctx.fillStyle = '#0071E3';
+            ctx.fill();
+
+            // 標示文字
+            ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.fillStyle = '#1D1D1F';
+            ctx.fillText(`${deg}°`, centerX + 25, centerY - 25);
+            ctx.fillStyle = '#86868B';
+            ctx.fillText(`(${cos.toFixed(2)}, ${sin.toFixed(2)})`, targetX + 5, targetY - 5);
+        }
+
+        window.onload = calculateAndDraw;
+        document.getElementById('angle').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') calculateAndDraw();
+        });
+    </script>
+</body>
+</html>
