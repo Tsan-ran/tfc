@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>三角函數計算機 (精確分數版)</title>
+    <title>三角函數計算機 (粲然牌)</title>
     <style>
         /* Apple 風格設計 */
         :root {
@@ -49,7 +49,6 @@
 
         .input-group {
             display: flex;
-            gap: 12px;
             margin-bottom: 24px;
         }
 
@@ -62,32 +61,13 @@
             outline: none;
             transition: all 0.2s ease;
             background-color: #FAFAFA;
+            text-align: center;
         }
 
         input[type="number"]:focus {
             border-color: var(--blue);
             box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.1);
             background-color: #FFF;
-        }
-
-        button {
-            background-color: var(--blue);
-            color: white;
-            border: none;
-            border-radius: 14px;
-            padding: 0 24px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        button:active {
-            transform: scale(0.96);
         }
 
         .results {
@@ -105,7 +85,7 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            min-height: 70px;
+            min-height: 80px;
         }
 
         .result-box h3 {
@@ -120,8 +100,28 @@
             margin: 0 0 4px 0;
             font-size: 18px;
             font-weight: 600;
-            word-break: break-all;
             font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 直式分數 CSS */
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.2;
+            margin: 0 4px;
+        }
+        
+        .fraction .num {
+            border-bottom: 2px solid currentColor;
+            padding: 0 2px;
+        }
+        
+        .fraction .den {
+            padding: 0 2px;
         }
 
         .decimal {
@@ -145,6 +145,14 @@
             background-color: transparent;
             max-width: 100%;
         }
+
+        /* 版權宣告 CSS */
+        .footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-sec);
+        }
     </style>
 </head>
 <body>
@@ -153,24 +161,23 @@
         <h1>三角函數計算機</h1>
         
         <div class="input-group">
-            <input type="number" id="angle" placeholder="輸入角度 (例如: 45, 60, 390)" value="60">
-            <button onclick="calculateAndDraw()">計算</button>
+            <input type="number" id="angle" placeholder="請直接輸入角度 (如: 45, -30)" value="60">
         </div>
 
         <div class="results">
             <div class="result-box">
                 <h3 class="sin-text">Sin</h3>
-                <p id="sin-exact" class="exact sin-text">-</p>
+                <div id="sin-exact" class="exact sin-text">-</div>
                 <p id="sin-val" class="decimal">-</p>
             </div>
             <div class="result-box">
                 <h3 class="cos-text">Cos</h3>
-                <p id="cos-exact" class="exact cos-text">-</p>
+                <div id="cos-exact" class="exact cos-text">-</div>
                 <p id="cos-val" class="decimal">-</p>
             </div>
             <div class="result-box">
                 <h3>Tan</h3>
-                <p id="tan-exact" class="exact">-</p>
+                <div id="tan-exact" class="exact">-</div>
                 <p id="tan-val" class="decimal">-</p>
             </div>
         </div>
@@ -178,12 +185,14 @@
         <div class="canvas-container">
             <canvas id="canvas" width="300" height="300"></canvas>
         </div>
+
+        <div class="footer">
+            &copy; 2026 粲然數學家
+        </div>
     </div>
 
     <script>
-        // 處理特殊角度的分數轉換表
         function getExactValues(deg) {
-            // 正規化角度到 0-359 之間 (處理廣義角及負角)
             let d = ((deg % 360) + 360) % 360;
             
             const exactMap = {
@@ -208,36 +217,53 @@
             return exactMap[d] || { sin: "-", cos: "-", tan: "-" };
         }
 
-        // 更新 UI 顯示邏輯
+        function formatExact(val) {
+            if (!val.includes('/')) return val; 
+            
+            let isNegative = val.startsWith('-');
+            let cleanVal = isNegative ? val.substring(1) : val;
+            let [num, den] = cleanVal.split('/');
+            
+            let signHTML = isNegative ? '<span>-</span>' : '';
+            return `${signHTML}<div class="fraction"><span class="num">${num}</span><span class="den">${den}</span></div>`;
+        }
+
         function updateDisplay(type, exactStr, decimalStr, isUndefined) {
             const exactEl = document.getElementById(`${type}-exact`);
             const decEl = document.getElementById(`${type}-val`);
             
             if (isUndefined) {
-                exactEl.innerText = "無定義";
+                exactEl.innerHTML = "無定義";
                 decEl.innerText = "";
                 return;
             }
 
             if (exactStr !== "-") {
-                // 如果是特殊角，上方顯示分數，下方顯示小數
-                exactEl.innerText = exactStr;
-                // 如果已經是整數 (0, 1, -1)，下方就留空保持畫面簡潔
+                exactEl.innerHTML = formatExact(exactStr);
+                
                 if (exactStr === "0" || exactStr === "1" || exactStr === "-1") {
-                    decEl.innerText = "";
+                    decEl.innerText = ""; 
                 } else {
                     decEl.innerText = `≈ ${decimalStr}`;
                 }
             } else {
-                // 如果不是特殊角，上方直接顯示小數，下方提示
-                exactEl.innerText = decimalStr;
+                exactEl.innerHTML = decimalStr;
                 decEl.innerText = "非特殊角";
             }
         }
 
-        // 解決 JavaScript 浮點數精度問題
         function cleanZero(val) {
             return Math.abs(val) < 1e-10 ? 0 : val;
+        }
+
+        function clearUI() {
+            ['sin', 'cos', 'tan'].forEach(type => {
+                document.getElementById(`${type}-exact`).innerHTML = "-";
+                document.getElementById(`${type}-val`).innerText = "";
+            });
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
         function calculateAndDraw() {
@@ -245,29 +271,24 @@
             const angleDeg = parseFloat(inputElement.value);
 
             if (isNaN(angleDeg)) {
-                alert("請輸入有效的數字角度！");
+                clearUI();
                 return;
             }
 
             const angleRad = angleDeg * (Math.PI / 180);
 
-            // 計算數值
             let sinVal = cleanZero(Math.sin(angleRad));
             let cosVal = cleanZero(Math.cos(angleRad));
             let tanVal = cleanZero(Math.tan(angleRad));
 
-            // 取得精確分數表
             const exactValues = getExactValues(angleDeg);
 
-            // 更新 Sin, Cos
             updateDisplay('sin', exactValues.sin, sinVal.toFixed(4), false);
             updateDisplay('cos', exactValues.cos, cosVal.toFixed(4), false);
 
-            // 處理 Tan (包含 90, 270 無定義的情況)
             let isTanUndefined = Math.abs(cosVal) === 0 || Math.abs(tanVal) > 10000;
             updateDisplay('tan', exactValues.tan, tanVal.toFixed(4), isTanUndefined);
 
-            // 畫圖
             drawGraph(angleDeg, angleRad, sinVal, cosVal);
         }
 
@@ -280,10 +301,8 @@
             const centerY = height / 2;
             const radius = 100; 
 
-            // 清空畫布
             ctx.clearRect(0, 0, width, height);
 
-            // 繪製座標軸
             ctx.beginPath();
             ctx.strokeStyle = '#C7C7CC';
             ctx.lineWidth = 1;
@@ -293,25 +312,21 @@
             ctx.lineTo(centerX, height);
             ctx.stroke();
 
-            // 繪製單位圓
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
             ctx.strokeStyle = '#E5E5EA';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // 計算終邊座標
             const targetX = centerX + cos * radius;
             const targetY = centerY - sin * radius;
 
-            // 畫出角度弧線
             ctx.beginPath();
             ctx.arc(centerX, centerY, 20, 0, -rad, rad > 0); 
             ctx.strokeStyle = '#0071E3';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // 繪製 Cos 線段 (綠色)
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
             ctx.lineTo(targetX, centerY);
@@ -319,7 +334,6 @@
             ctx.lineWidth = 3;
             ctx.stroke();
 
-            // 繪製 Sin 線段 (紅色)
             ctx.beginPath();
             ctx.moveTo(targetX, centerY);
             ctx.lineTo(targetX, targetY);
@@ -327,7 +341,6 @@
             ctx.lineWidth = 3;
             ctx.stroke();
 
-            // 繪製斜邊 (藍色)
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
             ctx.lineTo(targetX, targetY);
@@ -335,13 +348,11 @@
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // 繪製交點
             ctx.beginPath();
             ctx.arc(targetX, targetY, 4, 0, 2 * Math.PI);
             ctx.fillStyle = '#0071E3';
             ctx.fill();
 
-            // 標示文字
             ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
             ctx.fillStyle = '#1D1D1F';
             ctx.fillText(`${deg}°`, centerX + 25, centerY - 25);
@@ -349,10 +360,8 @@
             ctx.fillText(`(${cos.toFixed(2)}, ${sin.toFixed(2)})`, targetX + 5, targetY - 5);
         }
 
+        document.getElementById('angle').addEventListener('input', calculateAndDraw);
         window.onload = calculateAndDraw;
-        document.getElementById('angle').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') calculateAndDraw();
-        });
     </script>
 </body>
 </html>
